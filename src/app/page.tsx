@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { Upload, FileText, Download, Image as ImageIcon } from 'lucide-react'
 import ImageUpload from '@/components/ImageUpload'
@@ -9,12 +9,29 @@ import Navigation from '@/components/Navigation'
 
 export default function Home() {
   const { data: session, status } = useSession()
-  const [extractedText, setExtractedText] = useState<string>('')
+  const [extractedTexts, setExtractedTexts] = useState<string[]>([])
   const [isProcessing, setIsProcessing] = useState(false)
   const [processedDocument, setProcessedDocument] = useState<{
     wordUrl?: string
     pdfUrl?: string
   }>({})
+
+  // Persist uploads in sessionStorage
+  useEffect(() => {
+    if (extractedTexts.length > 0) {
+      sessionStorage.setItem('officeai_uploads', JSON.stringify(extractedTexts))
+    }
+  }, [extractedTexts])
+
+  useEffect(() => {
+    const saved = sessionStorage.getItem('officeai_uploads')
+    if (saved) {
+      setExtractedTexts(JSON.parse(saved))
+    }
+  }, [])
+
+  // Special marker for page breaks
+  const PAGE_BREAK_MARKER = '__PAGE_BREAK__'
 
   const handleImageProcess = async (imageFile: File) => {
     setIsProcessing(true)
@@ -32,14 +49,65 @@ export default function Home() {
       }
 
       const data = await response.json()
-      setExtractedText(data.text)
+      setExtractedTexts(prev => [...prev, data.text])
+      setProcessedDocument({}) // Clear previous document links
+    } catch (error) {
+      console.error('Error processing image:', error)
+      alert('Error processing image. Please try again.')
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  const handleInsertPageBreak = () => {
+    setExtractedTexts(prev => [...prev, PAGE_BREAK_MARKER])
+  }
+
+  // Save only the last upload as a document
+  const handleSaveSingle = async () => {
+    if (extractedTexts.length === 0) return
+    setIsProcessing(true)
+    try {
+      const response = await fetch('/api/process-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          extractedTexts: [extractedTexts[extractedTexts.length - 1]],
+          pageBreakMarker: PAGE_BREAK_MARKER,
+        }),
+      })
+      const data = await response.json()
       setProcessedDocument({
         wordUrl: data.wordUrl,
         pdfUrl: data.pdfUrl,
       })
     } catch (error) {
-      console.error('Error processing image:', error)
-      alert('Error processing image. Please try again.')
+      alert('Error saving document. Please try again.')
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  // Save all uploads as a single document
+  const handleSaveAll = async () => {
+    if (extractedTexts.length === 0) return
+    setIsProcessing(true)
+    try {
+      const response = await fetch('/api/process-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          extractedTexts,
+          pageBreakMarker: PAGE_BREAK_MARKER,
+        }),
+      })
+      const data = await response.json()
+      setProcessedDocument({
+        wordUrl: data.wordUrl,
+        pdfUrl: data.pdfUrl,
+      })
+    } catch (error) {
+      alert('Error saving document. Please try again.')
     } finally {
       setIsProcessing(false)
     }
@@ -100,6 +168,13 @@ export default function Home() {
             onImageUpload={handleImageProcess}
             isProcessing={isProcessing}
           />
+          <button
+            className="mt-4 w-full btn-secondary"
+            onClick={handleInsertPageBreak}
+            disabled={isProcessing}
+          >
+            Insert Page Break
+          </button>
         </div>
 
         {/* Preview Section */}
@@ -111,10 +186,27 @@ export default function Home() {
             </h2>
           </div>
           <DocumentPreview 
-            extractedText={extractedText}
+            extractedTexts={extractedTexts}
             processedDocument={processedDocument}
             isProcessing={isProcessing}
+            pageBreakMarker={PAGE_BREAK_MARKER}
           />
+        </div>
+        <div className="flex flex-col gap-2 mt-4">
+          <button
+            className="btn-primary"
+            onClick={handleSaveSingle}
+            disabled={isProcessing || extractedTexts.length === 0}
+          >
+            Save This Upload
+          </button>
+          <button
+            className="btn-secondary"
+            onClick={handleSaveAll}
+            disabled={isProcessing || extractedTexts.length === 0}
+          >
+            Save All Uploads
+          </button>
         </div>
       </div>
 

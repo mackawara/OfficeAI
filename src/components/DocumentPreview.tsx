@@ -4,24 +4,29 @@ import { FileText, Download, Copy, Check } from 'lucide-react'
 import { useState } from 'react'
 
 interface DocumentPreviewProps {
-  extractedText: string
+  extractedTexts: string[]
   processedDocument: {
     wordUrl?: string
     pdfUrl?: string
   }
   isProcessing: boolean
+  pageBreakMarker: string
 }
 
 export default function DocumentPreview({ 
-  extractedText, 
+  extractedTexts, 
   processedDocument, 
-  isProcessing 
+  isProcessing, 
+  pageBreakMarker
 }: DocumentPreviewProps) {
   const [copied, setCopied] = useState(false)
 
   const copyToClipboard = async () => {
     try {
-      await navigator.clipboard.writeText(extractedText)
+      const textToCopy = extractedTexts
+        .map(block => block === pageBreakMarker ? '\n--- PAGE BREAK ---\n' : block)
+        .join('\n\n')
+      await navigator.clipboard.writeText(textToCopy)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch (error) {
@@ -57,7 +62,7 @@ export default function DocumentPreview({
     )
   }
 
-  if (!extractedText) {
+  if (!extractedTexts || extractedTexts.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center text-gray-500">
@@ -92,9 +97,19 @@ export default function DocumentPreview({
           </button>
         </div>
         <div className="bg-gray-50 rounded-lg p-4 max-h-64 overflow-y-auto">
-          <p className="text-gray-800 whitespace-pre-wrap text-sm">
-            {extractedText}
-          </p>
+          <div className="text-gray-800 whitespace-pre-wrap text-sm">
+            {extractedTexts.map((block, idx) =>
+              block === pageBreakMarker ? (
+                <div key={idx} className="my-4 flex items-center">
+                  <div className="flex-grow border-t border-dashed border-gray-400"></div>
+                  <span className="mx-2 text-xs text-gray-500">PAGE BREAK</span>
+                  <div className="flex-grow border-t border-dashed border-gray-400"></div>
+                </div>
+              ) : (
+                <p key={idx}>{block}</p>
+              )
+            )}
+          </div>
         </div>
       </div>
 
