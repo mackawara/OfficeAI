@@ -6,7 +6,7 @@ import SessionProvider from '@/components/SessionProvider'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'OfficeAI - Document Processing with AI',
+  title: 'Venta OfficeAI - Document Processing with AI',
   description: 'AI-powered document processing application that converts scanned images to Word documents and PDFs',
 }
 

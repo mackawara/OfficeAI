@@ -113,6 +113,13 @@ export default function Home() {
     }
   }
 
+  // Start fresh handler
+  const handleStartFresh = () => {
+    setExtractedTexts([])
+    setProcessedDocument({})
+    sessionStorage.removeItem('officeai_uploads')
+  }
+
   // Show loading state while checking authentication
   if (status === 'loading') {
     return (
@@ -192,20 +199,27 @@ export default function Home() {
             pageBreakMarker={PAGE_BREAK_MARKER}
           />
         </div>
-        <div className="flex flex-col gap-2 mt-4">
+        <div className="flex flex-col sm:flex-row gap-2 mt-4 w-full">
           <button
-            className="btn-primary"
+            className="btn-primary w-full"
             onClick={handleSaveSingle}
             disabled={isProcessing || extractedTexts.length === 0}
           >
             Save This Upload
           </button>
           <button
-            className="btn-secondary"
+            className="btn-primary w-full"
             onClick={handleSaveAll}
             disabled={isProcessing || extractedTexts.length === 0}
           >
             Save All Uploads
+          </button>
+          <button
+            className="btn-danger w-full hover:bg-primary-600 hover:text-white transition-colors"
+            onClick={handleStartFresh}
+            disabled={isProcessing || extractedTexts.length === 0}
+          >
+            Start Fresh
           </button>
         </div>
       </div>

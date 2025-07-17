@@ -1,0 +1,28 @@
+# Node modules and build output
+node_modules
+.next
+out
+build
+
+# Git and Vercel
+.git
+.vercel
+
+# Logs and coverage
+*.log
+coverage
+
+# Environment files
+.env*
+
+# Misc
+.DS_Store
+*.pem
+*.tsbuildinfo
+next-env.d.ts
+
+# Tests and docs
+test
+tests
+docs
+*.md 

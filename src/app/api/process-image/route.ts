@@ -5,11 +5,6 @@ import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
 import mongoose from 'mongoose'
 import { connectDB } from '@/lib/mongodb'
 
-// Initialize OpenAI
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
-
 // Document Schema
 const DocumentSchema = new mongoose.Schema({
   originalText: String,
@@ -22,6 +17,11 @@ const DocumentModel = mongoose.models.Document || mongoose.model('Document', Doc
 
 export async function POST(request: NextRequest) {
   try {
+    // Initialize OpenAI inside the function
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    })
+
     await connectDB();
 
     const contentType = request.headers.get('content-type') || '';
