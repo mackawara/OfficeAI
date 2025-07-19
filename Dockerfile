@@ -1,25 +1,40 @@
-FROM node:20-alpine
+FROM node:20-alpine AS base
 
 # Install system dependencies
 RUN apk add --no-cache git python3 make g++
 
 # Create and set working directory
-RUN mkdir -p /code
 WORKDIR /code
 
-# Copy only necessary files (ignored in .dockerignore)
-COPY package.json yarn.lock /code/
-RUN yarn install --frozen-lockfile
+# Copy package files first for better caching
+COPY package.json yarn.lock ./
+RUN yarn install --frozen-lockfile --production=false
 
-# Copy the rest of the source code
-COPY . /code
+# Copy source code
+COPY . .
 
 # Build the project
 RUN yarn build
 
-# Copy start script and set permissions
-COPY start.sh /code/start.sh
-RUN chmod +x /code/start.sh 
+# Production stage
+FROM node:20-alpine AS production
+
+# Install only production dependencies
+RUN apk add --no-cache git python3 make g++
+
+WORKDIR /code
+
+# Copy package files and install only production dependencies
+COPY package.json yarn.lock ./
+RUN yarn install --frozen-lockfile --production=true
+
+# Copy built application from base stage
+COPY --from=base /code/.next ./.next
+COPY --from=base /code/next.config.js ./
+COPY --from=base /code/start.sh ./
+
+# Set permissions
+RUN chmod +x ./start.sh
 
 EXPOSE 3000
-CMD ["/code/start.sh"] 
+CMD ["./start.sh"] 

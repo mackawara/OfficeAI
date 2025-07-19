@@ -25,4 +25,11 @@ next-env.d.ts
 test
 tests
 docs
-*.md 
+*.md
+
+# Additional optimizations
+.gitignore
+README.md
+Makefile
+app.yaml
+.env.example 
