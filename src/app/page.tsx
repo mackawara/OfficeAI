@@ -1,124 +1,19 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
-import { Upload, FileText, Download, Image as ImageIcon } from 'lucide-react'
-import ImageUpload from '@/components/ImageUpload'
-import DocumentPreview from '@/components/DocumentPreview'
-import Navigation from '@/components/Navigation'
+import Link from 'next/link'
+import { 
+  Image as ImageIcon, 
+  FileText, 
+  Download, 
+  Upload, 
+  Settings,
+  Clock,
+  TrendingUp
+} from 'lucide-react'
 
-export default function Home() {
+export default function Dashboard() {
   const { data: session, status } = useSession()
-  const [extractedTexts, setExtractedTexts] = useState<string[]>([])
-  const [isProcessing, setIsProcessing] = useState(false)
-  const [processedDocument, setProcessedDocument] = useState<{
-    wordUrl?: string
-    pdfUrl?: string
-  }>({})
-
-  // Persist uploads in sessionStorage
-  useEffect(() => {
-    if (extractedTexts.length > 0) {
-      sessionStorage.setItem('officeai_uploads', JSON.stringify(extractedTexts))
-    }
-  }, [extractedTexts])
-
-  useEffect(() => {
-    const saved = sessionStorage.getItem('officeai_uploads')
-    if (saved) {
-      setExtractedTexts(JSON.parse(saved))
-    }
-  }, [])
-
-  // Special marker for page breaks
-  const PAGE_BREAK_MARKER = '__PAGE_BREAK__'
-
-  const handleImageProcess = async (imageFile: File) => {
-    setIsProcessing(true)
-    try {
-      const formData = new FormData()
-      formData.append('image', imageFile)
-
-      const response = await fetch('/api/process-image', {
-        method: 'POST',
-        body: formData,
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to process image')
-      }
-
-      const data = await response.json()
-      setExtractedTexts(prev => [...prev, data.text])
-      setProcessedDocument({}) // Clear previous document links
-    } catch (error) {
-      console.error('Error processing image:', error)
-      alert('Error processing image. Please try again.')
-    } finally {
-      setIsProcessing(false)
-    }
-  }
-
-  const handleInsertPageBreak = () => {
-    setExtractedTexts(prev => [...prev, PAGE_BREAK_MARKER])
-  }
-
-  // Save only the last upload as a document
-  const handleSaveSingle = async () => {
-    if (extractedTexts.length === 0) return
-    setIsProcessing(true)
-    try {
-      const response = await fetch('/api/process-image', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          extractedTexts: [extractedTexts[extractedTexts.length - 1]],
-          pageBreakMarker: PAGE_BREAK_MARKER,
-        }),
-      })
-      const data = await response.json()
-      setProcessedDocument({
-        wordUrl: data.wordUrl,
-        pdfUrl: data.pdfUrl,
-      })
-    } catch (error) {
-      alert('Error saving document. Please try again.')
-    } finally {
-      setIsProcessing(false)
-    }
-  }
-
-  // Save all uploads as a single document
-  const handleSaveAll = async () => {
-    if (extractedTexts.length === 0) return
-    setIsProcessing(true)
-    try {
-      const response = await fetch('/api/process-image', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          extractedTexts,
-          pageBreakMarker: PAGE_BREAK_MARKER,
-        }),
-      })
-      const data = await response.json()
-      setProcessedDocument({
-        wordUrl: data.wordUrl,
-        pdfUrl: data.pdfUrl,
-      })
-    } catch (error) {
-      alert('Error saving document. Please try again.')
-    } finally {
-      setIsProcessing(false)
-    }
-  }
-
-  // Start fresh handler
-  const handleStartFresh = () => {
-    setExtractedTexts([])
-    setProcessedDocument({})
-    sessionStorage.removeItem('officeai_uploads')
-  }
 
   // Show loading state while checking authentication
   if (status === 'loading') {
@@ -149,111 +44,185 @@ export default function Home() {
     )
   }
 
+  const quickActions = [
+    {
+      name: 'Image to Word',
+      description: 'Convert scanned images to Word documents',
+      href: '/image-to-word',
+      icon: ImageIcon,
+      color: 'bg-blue-500',
+      gradient: 'from-blue-500 to-blue-600'
+    },
+    {
+      name: 'Documents',
+      description: 'Manage your processed documents',
+      href: '/documents',
+      icon: FileText,
+      color: 'bg-green-500',
+      gradient: 'from-green-500 to-green-600'
+    },
+    {
+      name: 'Settings',
+      description: 'Configure your account and preferences',
+      href: '/settings',
+      icon: Settings,
+      color: 'bg-purple-500',
+      gradient: 'from-purple-500 to-purple-600'
+    }
+  ]
+
+  const stats = [
+    {
+      name: 'Documents Processed',
+      value: '12',
+      change: '+2.5%',
+      changeType: 'positive',
+      icon: FileText
+    },
+    {
+      name: 'Images Uploaded',
+      value: '48',
+      change: '+12.3%',
+      changeType: 'positive',
+      icon: Upload
+    },
+    {
+      name: 'Downloads',
+      value: '36',
+      change: '+8.1%',
+      changeType: 'positive',
+      icon: Download
+    }
+  ]
+
   return (
-    <>
-      <Navigation />
-      <div className="container mx-auto px-4 py-8">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            OfficeAI
-          </h1>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Transform scanned images into professional Word documents and PDFs using AI
-          </p>
-        </div>
+    <div className="max-w-7xl mx-auto">
+      {/* Welcome Section */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">
+          Welcome back, {session?.user?.name || 'User'}!
+        </h1>
+        <p className="text-gray-600">
+          Here's what's happening with your documents today.
+        </p>
+      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Upload Section */}
-        <div className="card">
-          <div className="flex items-center mb-4">
-            <ImageIcon className="w-6 h-6 text-primary-600 mr-2" />
-            <h2 className="text-2xl font-semibold text-gray-900">
-              Upload Image
-            </h2>
-          </div>
-          <ImageUpload 
-            onImageUpload={handleImageProcess}
-            isProcessing={isProcessing}
-          />
-          <button
-            className="mt-4 w-full btn-secondary"
-            onClick={handleInsertPageBreak}
-            disabled={isProcessing}
-          >
-            Insert Page Break
-          </button>
-        </div>
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        {stats.map((stat) => {
+          const Icon = stat.icon
+          return (
+            <div key={stat.name} className="card">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <div className="w-8 h-8 bg-primary-100 rounded-lg flex items-center justify-center">
+                    <Icon className="w-5 h-5 text-primary-600" />
+                  </div>
+                </div>
+                <div className="ml-4 flex-1">
+                  <p className="text-sm font-medium text-gray-600">{stat.name}</p>
+                  <p className="text-2xl font-semibold text-gray-900">{stat.value}</p>
+                </div>
+                <div className="flex items-center">
+                  <span className={`text-sm font-medium ${
+                    stat.changeType === 'positive' ? 'text-green-600' : 'text-red-600'
+                  }`}>
+                    {stat.change}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
 
-        {/* Preview Section */}
-        <div className="card">
-          <div className="flex items-center mb-4">
-            <FileText className="w-6 h-6 text-primary-600 mr-2" />
-            <h2 className="text-2xl font-semibold text-gray-900">
-              Document Preview
-            </h2>
-          </div>
-          <DocumentPreview 
-            extractedTexts={extractedTexts}
-            processedDocument={processedDocument}
-            isProcessing={isProcessing}
-            pageBreakMarker={PAGE_BREAK_MARKER}
-          />
-        </div>
-        <div className="flex flex-col sm:flex-row gap-2 mt-4 w-full">
-          <button
-            className="btn-primary w-full"
-            onClick={handleSaveSingle}
-            disabled={isProcessing || extractedTexts.length === 0}
-          >
-            Save This Upload
-          </button>
-          <button
-            className="btn-primary w-full"
-            onClick={handleSaveAll}
-            disabled={isProcessing || extractedTexts.length === 0}
-          >
-            Save All Uploads
-          </button>
-          <button
-            className="btn-danger w-full hover:bg-primary-600 hover:text-white transition-colors"
-            onClick={handleStartFresh}
-            disabled={isProcessing || extractedTexts.length === 0}
-          >
-            Start Fresh
-          </button>
+      {/* Quick Actions */}
+      <div className="mb-8">
+        <h2 className="text-2xl font-bold text-gray-900 mb-6">Quick Actions</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {quickActions.map((action) => {
+            const Icon = action.icon
+            return (
+              <Link
+                key={action.name}
+                href={action.href}
+                className="group relative bg-white rounded-lg border border-gray-200 p-6 hover:shadow-lg transition-all duration-200 hover:border-primary-300"
+              >
+                <div className="flex items-center">
+                  <div className={`w-12 h-12 rounded-lg bg-gradient-to-r ${action.gradient} flex items-center justify-center group-hover:scale-110 transition-transform duration-200`}>
+                    <Icon className="w-6 h-6 text-white" />
+                  </div>
+                  <div className="ml-4">
+                    <h3 className="text-lg font-semibold text-gray-900 group-hover:text-primary-600 transition-colors">
+                      {action.name}
+                    </h3>
+                    <p className="text-sm text-gray-600 mt-1">
+                      {action.description}
+                    </p>
+                  </div>
+                </div>
+                <div className="absolute inset-0 rounded-lg ring-2 ring-transparent group-hover:ring-primary-200 transition-all duration-200" />
+              </Link>
+            )
+          })}
         </div>
       </div>
 
-      {/* Features Section */}
-      <div className="mt-16">
-        <h2 className="text-3xl font-bold text-center text-gray-900 mb-8">
-          Features
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="card text-center">
-            <Upload className="w-12 h-12 text-primary-600 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold mb-2">Easy Upload</h3>
-            <p className="text-gray-600">
-              Simply drag and drop or click to upload your scanned images
-            </p>
+      {/* Recent Activity */}
+      <div className="mb-8">
+        <h2 className="text-2xl font-bold text-gray-900 mb-6">Recent Activity</h2>
+        <div className="card">
+          <div className="space-y-4">
+            <div className="flex items-center space-x-4">
+              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                <ImageIcon className="w-4 h-4 text-blue-600" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-gray-900">Image processed successfully</p>
+                <p className="text-xs text-gray-500">document_2024_01_15.docx</p>
+              </div>
+              <div className="text-xs text-gray-500">2 hours ago</div>
+            </div>
+            <div className="flex items-center space-x-4">
+              <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                <Download className="w-4 h-4 text-green-600" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-gray-900">Document downloaded</p>
+                <p className="text-xs text-gray-500">report_final.pdf</p>
+              </div>
+              <div className="text-xs text-gray-500">1 day ago</div>
+            </div>
+            <div className="flex items-center space-x-4">
+              <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                <Upload className="w-4 h-4 text-purple-600" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-gray-900">New image uploaded</p>
+                <p className="text-xs text-gray-500">scan_001.jpg</p>
+              </div>
+              <div className="text-xs text-gray-500">2 days ago</div>
+            </div>
           </div>
-          <div className="card text-center">
-            <FileText className="w-12 h-12 text-primary-600 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold mb-2">AI Processing</h3>
-            <p className="text-gray-600">
-              Advanced AI models extract and process text from your images
-            </p>
-          </div>
-          <div className="card text-center">
-            <Download className="w-12 h-12 text-primary-600 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold mb-2">Multiple Formats</h3>
-            <p className="text-gray-600">
-              Download your documents as Word files or PDFs
-            </p>
-          </div>
+        </div>
+      </div>
+
+      {/* Getting Started */}
+      <div className="card bg-gradient-to-r from-primary-50 to-blue-50 border-primary-200">
+        <div className="text-center">
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Getting Started</h3>
+          <p className="text-gray-600 mb-4">
+            New to OfficeAI? Start by converting your first image to a Word document.
+          </p>
+          <Link
+            href="/image-to-word"
+            className="inline-flex items-center px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors"
+          >
+            <ImageIcon className="w-4 h-4 mr-2" />
+            Start Converting
+          </Link>
         </div>
       </div>
     </div>
-    </>
   )
 } 

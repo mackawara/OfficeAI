@@ -1,0 +1,52 @@
+alerts:
+- rule: DEPLOYMENT_FAILED
+- rule: DOMAIN_FAILED
+envs:
+- key: APP_NAME
+  scope: RUN_AND_BUILD_TIME
+  value: ${APP_NAME}
+- key: DOCKER_USERNAME
+  scope: RUN_AND_BUILD_TIME
+  value: ${DOCKER_USERNAME}
+- key: MONGODB_URI
+  scope: RUN_AND_BUILD_TIME
+  value: ${MONGODB_URI}
+- key: OPENAI_API_KEY
+  scope: RUN_AND_BUILD_TIME
+  value: ${OPENAI_API_KEY}
+- key: NEXTAUTH_SECRET
+  scope: RUN_AND_BUILD_TIME
+  value: ${NEXTAUTH_SECRET}
+- key: NEXTAUTH_URL
+  scope: RUN_AND_BUILD_TIME
+  value: ${NEXTAUTH_URL}
+features:
+- buildpack-stack=ubuntu-22
+ingress:
+  rules:
+  - component:
+      name: mackawara-officeai-server
+    match:
+      authority:
+        exact: ""
+      path:
+        prefix: /
+name: ${APP_NAME}
+region: blr
+services:
+- http_port: 3000
+  image:
+    registry: ${DOCKER_USERNAME}
+    registry_type: DOCKER_HUB
+    repository: ${APP_NAME}
+    tag: latest
+  instance_count: 1
+  instance_size_slug: apps-s-1vcpu-0.5gb
+  name: mackawara-officeai-server
+  health_check:
+    http_path: /api/health
+    initial_delay_seconds: 10
+    period_seconds: 10
+    timeout_seconds: 5
+    success_threshold: 1
+    failure_threshold: 3 
