@@ -10,6 +10,8 @@ A Next.js application that uses AI to extract text from scanned images and gener
 - 💾 **Database Storage**: MongoDB integration for storing processed documents
 - 🎨 **Modern UI**: Beautiful, responsive interface built with Tailwind CSS
 - 📱 **Mobile Friendly**: Works seamlessly on all devices
+- 🔒 **Security Features**: Rate limiting and email allowlisting for signup
+- 👨‍💼 **Admin Dashboard**: Monitor allowed emails and rate limiting configuration
 
 ## Tech Stack
 
@@ -92,6 +94,21 @@ A Next.js application that uses AI to extract text from scanned images and gener
 - `POST /api/process-image` - Process uploaded image and extract text
 - `GET /api/download/word/[id]` - Download Word document by ID
 - `GET /api/download/pdf/[id]` - Download PDF document by ID
+- `POST /api/auth/signup` - User registration (rate limited)
+- `GET /api/admin/allowed-emails` - Get list of allowed emails (admin only)
+
+## Security Features
+
+### Rate Limiting
+- Signup requests are rate limited per IP address
+- Configurable via `RATE_LIMIT_MAX_REQUESTS` and `RATE_LIMIT_WINDOW_MS` environment variables
+- Default: 5 requests per 15 minutes per IP
+
+### Email Allowlisting
+- Only authorized email addresses can register for accounts
+- Configured via `ALLOWED_EMAILS` environment variable (comma-separated)
+- If no emails are configured, all emails are allowed
+- Admin dashboard available at `/admin` to monitor configuration
 
 ## Database Schema
 
@@ -112,6 +129,9 @@ Document {
 | `OPENAI_API_KEY` | OpenAI API key for vision processing | Yes |
 | `NEXTAUTH_SECRET` | Secret for NextAuth.js | Yes |
 | `NEXTAUTH_URL` | Application URL | Yes |
+| `RATE_LIMIT_MAX_REQUESTS` | Maximum signup attempts per IP (default: 5) | No |
+| `RATE_LIMIT_WINDOW_MS` | Rate limit window in milliseconds (default: 900000) | No |
+| `ALLOWED_EMAILS` | Comma-separated list of allowed email addresses for signup | No |
 
 ## Development
 

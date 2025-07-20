@@ -3,6 +3,7 @@ import CredentialsProvider from 'next-auth/providers/credentials'
 import bcrypt from 'bcryptjs'
 import mongoose from 'mongoose'
 import { connectDB } from '@/lib/mongodb'
+import { isEmailAllowed } from '@/lib/emailValidation'
 
 // User Schema
 const UserSchema = new mongoose.Schema({
@@ -24,6 +25,12 @@ const handler = NextAuth({
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
+          return null
+        }
+
+        // Check if email is allowed before attempting authentication
+        if (!isEmailAllowed(credentials.email)) {
+          console.log(`Login attempt blocked for unauthorized email: ${credentials.email}`)
           return null
         }
 

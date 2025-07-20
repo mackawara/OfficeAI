@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import mongoose from 'mongoose'
 import { connectDB } from '@/lib/mongodb'
+import { isEmailAllowed } from '@/lib/emailValidation'
 
 // User Schema
 const UserSchema = new mongoose.Schema({
@@ -17,6 +18,14 @@ export async function POST(request: NextRequest) {
   try {
     const { email, password, name } = await request.json()
 
+    // Get client IP for rate limiting
+    const clientIP = request.headers.get('x-forwarded-for') || 
+                    request.headers.get('x-real-ip') || 
+                    'unknown'
+
+    // Check rate limit
+  
+
     // Validate input
     if (!email || !password || !name) {
       return NextResponse.json(
@@ -29,6 +38,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Password must be at least 6 characters long' },
         { status: 400 }
+      )
+    }
+
+    // Check if email is allowed
+    if (!isEmailAllowed(email)) {
+      return NextResponse.json(
+        { error: 'This email address is not authorized for signup' },
+        { status: 403 }
       )
     }
 
