@@ -11,12 +11,32 @@ import {
   Clock,
   TrendingUp
 } from 'lucide-react'
+import { useEffect, useState } from 'react'
 
 export default function Dashboard() {
   const { data: session, status } = useSession()
+  const [documents, setDocuments] = useState<any[]>([])
+  const [loadingDocs, setLoadingDocs] = useState(true)
+  const [error, setError] = useState('')
 
-  // Show loading state while checking authentication
-  if (status === 'loading') {
+  useEffect(() => {
+    if (status === 'authenticated') {
+      setLoadingDocs(true)
+      fetch('/api/documents')
+        .then(res => res.json())
+        .then(data => {
+          setDocuments(data.documents || [])
+          setLoadingDocs(false)
+        })
+        .catch(() => {
+          setError('Failed to load documents')
+          setLoadingDocs(false)
+        })
+    }
+  }, [status])
+
+  // Show loading state while checking authentication or fetching documents
+  if (status === 'loading' || loadingDocs) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
@@ -44,6 +64,37 @@ export default function Dashboard() {
     )
   }
 
+  // Calculate stats based on user's documents
+  const documentsProcessed = documents.length
+  // Assume each document is an image upload (if you want to track images separately, you need to store that info)
+  const imagesUploaded = documents.length
+  // For downloads, if you want to track, you need to store download events; for now, use documents as a proxy
+  const downloads = documents.length
+
+  const stats = [
+    {
+      name: 'Documents Processed',
+      value: documentsProcessed.toString(),
+      change: '', // You can implement change tracking if you store previous stats
+      changeType: 'positive',
+      icon: FileText
+    },
+    {
+      name: 'Images Uploaded',
+      value: imagesUploaded.toString(),
+      change: '',
+      changeType: 'positive',
+      icon: Upload
+    },
+    {
+      name: 'Downloads',
+      value: downloads.toString(),
+      change: '',
+      changeType: 'positive',
+      icon: Download
+    }
+  ]
+
   const quickActions = [
     {
       name: 'Image to Word',
@@ -68,30 +119,6 @@ export default function Dashboard() {
       icon: Settings,
       color: 'bg-purple-500',
       gradient: 'from-purple-500 to-purple-600'
-    }
-  ]
-
-  const stats = [
-    {
-      name: 'Documents Processed',
-      value: '12',
-      change: '+2.5%',
-      changeType: 'positive',
-      icon: FileText
-    },
-    {
-      name: 'Images Uploaded',
-      value: '48',
-      change: '+12.3%',
-      changeType: 'positive',
-      icon: Upload
-    },
-    {
-      name: 'Downloads',
-      value: '36',
-      change: '+8.1%',
-      changeType: 'positive',
-      icon: Download
     }
   ]
 

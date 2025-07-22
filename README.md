@@ -199,3 +199,13 @@ For support, please open an issue on GitHub or contact the development team.
 - Next.js team for the amazing framework
 - Tailwind CSS for the utility-first CSS framework
 - All the open-source libraries used in this project
+
+## TODOs (QA/Code Review Action Items)
+
+- [ ] Implement rate limiting on authentication endpoints to prevent brute-force and spam attacks.
+- [ ] Centralize and import Mongoose schemas from `src/models` in all API routes (avoid schema duplication).
+- [ ] Validate uploaded file type and size in image processing endpoints to prevent malicious uploads.
+- [ ] Replace all `any[]` usages with explicit types for better type safety.
+- [ ] Use generic error messages for authentication/signup to prevent user enumeration.
+- [ ] Add email format validation (regex) to signup and authentication flows.
+- [ ] Log client-side errors for easier debugging in production.

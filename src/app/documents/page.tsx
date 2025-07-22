@@ -2,12 +2,31 @@
 
 import { useSession } from 'next-auth/react'
 import { FileText, Download, Trash2, Calendar } from 'lucide-react'
+import { useEffect, useState } from 'react'
 
 export default function Documents() {
   const { data: session, status } = useSession()
+  const [documents, setDocuments] = useState<any[]>([])
+  const [loadingDocs, setLoadingDocs] = useState(true)
+  const [error, setError] = useState('')
 
-  // Show loading state while checking authentication
-  if (status === 'loading') {
+  useEffect(() => {
+    if (status === 'authenticated') {
+      setLoadingDocs(true)
+      fetch('/api/documents')
+        .then(res => res.json())
+        .then(data => {
+          setDocuments(data.documents || [])
+          setLoadingDocs(false)
+        })
+        .catch(() => {
+          setError('Failed to load documents')
+          setLoadingDocs(false)
+        })
+    }
+  }, [status])
+
+  if (status === 'loading' || loadingDocs) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
@@ -15,7 +34,6 @@ export default function Documents() {
     )
   }
 
-  // Redirect to signin if not authenticated
   if (status === 'unauthenticated') {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -35,32 +53,13 @@ export default function Documents() {
     )
   }
 
-  const documents = [
-    {
-      id: 1,
-      name: 'document_2024_01_15.docx',
-      type: 'Word Document',
-      size: '2.3 MB',
-      createdAt: '2024-01-15',
-      status: 'completed'
-    },
-    {
-      id: 2,
-      name: 'report_final.pdf',
-      type: 'PDF Document',
-      size: '1.8 MB',
-      createdAt: '2024-01-14',
-      status: 'completed'
-    },
-    {
-      id: 3,
-      name: 'scan_notes.docx',
-      type: 'Word Document',
-      size: '3.1 MB',
-      createdAt: '2024-01-13',
-      status: 'completed'
-    }
-  ]
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center text-red-600">{error}</div>
+      </div>
+    )
+  }
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -86,24 +85,24 @@ export default function Documents() {
 
         <div className="space-y-4">
           {documents.map((doc) => (
-            <div key={doc.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+            <div key={doc._id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
               <div className="flex items-center space-x-4">
                 <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center">
                   <FileText className="w-5 h-5 text-primary-600" />
                 </div>
                 <div>
-                  <h3 className="font-medium text-gray-900">{doc.name}</h3>
-                  <p className="text-sm text-gray-500">{doc.type} • {doc.size}</p>
+                  <h3 className="font-medium text-gray-900">{doc.wordUrl ? 'Word Document' : doc.pdfUrl ? 'PDF Document' : 'Document'}</h3>
+                  <p className="text-sm text-gray-500">{doc.originalText?.slice(0, 40)}...</p>
                 </div>
               </div>
               <div className="flex items-center space-x-2">
                 <div className="flex items-center text-sm text-gray-500">
                   <Calendar className="w-4 h-4 mr-1" />
-                  {doc.createdAt}
+                  {doc.createdAt ? new Date(doc.createdAt).toLocaleDateString() : ''}
                 </div>
-                <button className="p-2 text-gray-400 hover:text-primary-600 transition-colors">
+                <a href={doc.wordUrl ? `/api/download/word/${doc._id}` : doc.pdfUrl ? `/api/download/pdf/${doc._id}` : '#'} className="p-2 text-gray-400 hover:text-primary-600 transition-colors" download>
                   <Download className="w-4 h-4" />
-                </button>
+                </a>
                 <button className="p-2 text-gray-400 hover:text-red-600 transition-colors">
                   <Trash2 className="w-4 h-4" />
                 </button>

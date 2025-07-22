@@ -4,19 +4,19 @@ import { Document, Packer, Paragraph, TextRun } from 'docx'
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
 import mongoose from 'mongoose'
 import { connectDB } from '@/lib/mongodb'
+import DocumentModel from '@/models/Document'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/authOptions'
 
-// Document Schema
-const DocumentSchema = new mongoose.Schema({
-  originalText: String,
-  wordUrl: String,
-  pdfUrl: String,
-  createdAt: { type: Date, default: Date.now },
-})
-
-const DocumentModel = mongoose.models.Document || mongoose.model('Document', DocumentSchema)
 
 export async function POST(request: NextRequest) {
   try {
+    // Get user session
+    const session = await getServerSession(authOptions)
+    if (!session || !session.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    const userId = (session.user as any).id
     // Initialize OpenAI inside the function
     const openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
@@ -192,6 +192,7 @@ export async function POST(request: NextRequest) {
       originalText: extractedTexts!.join('\n\n'),
       wordUrl: `data:application/vnd.openxmlformats-officedocument.wordprocessingml.document;base64,${wordBase64}`,
       pdfUrl: `data:application/pdf;base64,${pdfBase64}`,
+      user: userId,
     })
     await document.save()
 
