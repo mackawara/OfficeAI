@@ -20,7 +20,7 @@ RUN yarn build
 FROM node:20-alpine AS production
 
 # Install only production dependencies
-RUN apk add --no-cache git python3 make g++
+RUN apk add --no-cache git python3 make g++ redis
 
 WORKDIR /code
 

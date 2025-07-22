@@ -5,4 +5,5 @@ echo "================================="
 echo "===== Checking .env file ====="
 ls -la /code/.env.local || echo ".env file not found"
 echo "================================="
+redis-server --daemonize yes &   # Start Redis in the background
 yarn start       # Start your Node.js application docker ps

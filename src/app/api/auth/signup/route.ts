@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs'
 import mongoose from 'mongoose'
 import { connectDB } from '@/lib/mongodb'
 import { isEmailAllowed } from '@/lib/emailValidation'
+import { rateLimit } from '@/lib/rateLimit'
 
 // User Schema
 const UserSchema = new mongoose.Schema({
@@ -21,10 +22,12 @@ export async function POST(request: NextRequest) {
     // Get client IP for rate limiting
     const clientIP = request.headers.get('x-forwarded-for') || 
                     request.headers.get('x-real-ip') || 
+                    request.ip ||
                     'unknown'
 
     // Check rate limit
-  
+    const rateLimitResponse = await rateLimit(request, clientIP)
+    if (rateLimitResponse) return rateLimitResponse
 
     // Validate input
     if (!email || !password || !name) {
