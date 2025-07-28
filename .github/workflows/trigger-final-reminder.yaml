@@ -1,0 +1,42 @@
+name: Trigger automated final reminders
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment for the API to target'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+        - production
+  schedule:
+    - cron: '30 8 1-5 * *' # 8:30 AM FROM the 5th to 9th of every month (prod)
+env:
+  PROD_HOURS: "[8]"  # The hour to run in production mode. Adjust if needed.
+  ENDPOINT: 'cron/finalreminder' # The endpoint to be pinged
+  API_ENDPOINT_URL: ${{ secrets.API_ENDPOINT_URL }}
+  BEARER_TOKEN: ${{ secrets.CRON_TRIGGER_TOKEN }}
+  ACTION: 'sendFinalReminder'
+jobs:
+  run-cron:
+    name: Run CRON Final Reminders
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Export hour variable
+        id: get_hour
+        run: |
+          echo "CURRENT_EVENT_HOUR=$(date +'%-H')" >> $GITHUB_ENV
+      - name: Print out schedule hour
+        run: |
+          echo 'prod hours: ${{ env.PROD_HOURS }}'
+          echo 'current hour: ${{env.CURRENT_EVENT_HOUR}}'
+          echo 'input environment: ${{ inputs.environment }}'
+      - name: Set CRON_TRIGGER_TOKEN
+        run: echo "CRON_TRIGGER_TOKEN=${{ secrets.CRON_TRIGGER_TOKEN }}" >> $GITHUB_ENV
+      - name: Run CRON job
+        run: |
+          yarn --frozen-lockfile
+          node scripts/trigger-endpoints.js 

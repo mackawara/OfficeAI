@@ -1,7 +1,7 @@
 FROM node:20-alpine AS base
 
 # Install system dependencies
-RUN apk add --no-cache git python3 make g++
+RUN apk add --no-cache git python3 make g++ redis
 
 # Create and set working directory
 WORKDIR /code

@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
     // Check if email is allowed
     if (!isEmailAllowed(email)) {
       return NextResponse.json(
-        { error: 'This email address is not authorized for signup' },
+        { error: 'Invalid email address' },
         { status: 403 }
       )
     }
