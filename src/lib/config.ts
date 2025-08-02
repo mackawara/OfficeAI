@@ -10,4 +10,5 @@ export const CONFIG = {
   NODE_ENV: process.env.NODE_ENV,
   CRON_TRIGGER_TOKEN: process.env.CRON_TRIGGER_TOKEN,
   DEV_TEST_RECEIVER_NUMBER: process.env.DEV_TEST_RECEIVER_NUMBER,
+  ADMIN_NUMBER: process.env.ADMIN_NUMBER,
 }; 
