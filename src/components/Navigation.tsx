@@ -2,7 +2,7 @@
 
 import { useSession, signOut } from 'next-auth/react'
 import Link from 'next/link'
-import { User, LogOut, Settings, Shield } from 'lucide-react'
+import { User, LogOut, Settings, Shield, Image as ImageIcon } from 'lucide-react'
 import { useState } from 'react'
 
 export default function Navigation() {
@@ -47,6 +47,13 @@ export default function Navigation() {
                       <p className="text-gray-500">{session.user?.email}</p>
                     </div>
                     <Link
+                      href="/text-to-image"
+                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                    >
+                      <ImageIcon className="w-4 h-4 mr-2" />
+                      Text to Image
+                    </Link>
+                    <Link
                       href="/admin"
                       className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
                     >
@@ -84,4 +91,4 @@ export default function Navigation() {
       </div>
     </nav>
   )
-} 
+}

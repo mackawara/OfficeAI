@@ -43,6 +43,12 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
       description: 'Convert scanned images to Word documents'
     },
     {
+      name: 'Text to Image',
+      href: '/text-to-image',
+      icon: ImageIcon,
+      description: 'Generate images from text prompts'
+    },
+    {
       name: 'Documents',
       href: '/documents',
       icon: FileText,
@@ -173,4 +179,4 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
       </div>
     </>
   )
-} 
+}
