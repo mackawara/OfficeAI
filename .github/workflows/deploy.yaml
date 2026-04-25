@@ -1,38 +1,45 @@
-name: Deploy to DigitalOcean App Platform
+name: Build and Deploy
 
 on:
   push:
-    branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
+    branches: [main, staging]
+    paths:
+      - src/**
+      - package.json
+      - yarn.lock
+      - .github/**
+      - next.config.js
+      - tailwind.config.js
+      - postcss.config.js
+      - tsconfig.json
+      - Dockerfile
 
 env:
-  REGISTRY: docker.io
-  IMAGE_NAME: ${{ secrets.APP_NAME }}
+  IMAGE: ${{ secrets.DOCKER_HUB_USERNAME }}/officeai
 
 jobs:
-  test:
+  # ─── Job 1: Lint & Build Check ────────────────────────────────────────────
+  check:
+    name: Lint & Build Check
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'yarn'
+          node-version: 20
+          cache: yarn
 
       - name: Install dependencies
         run: yarn install --frozen-lockfile
 
-      - name: Run type check
+      - name: Type check
         run: yarn type-check
 
-      - name: Run linting
+      - name: ESLint
         run: yarn lint
 
-      - name: Build application
+      - name: Build check
         run: yarn build
         env:
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
@@ -40,66 +47,111 @@ jobs:
           NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
           NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
 
-  deploy:
-    needs: test
+  # ─── Job 2: Build & Push Docker Image ─────────────────────────────────────
+  build-push:
+    name: Build & Push Image
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
-    
+    needs: check
+    outputs:
+      image_tag: ${{ github.sha }}
+
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'yarn'
-
-      - name: Install dependencies
-        run: yarn install --frozen-lockfile
-
-      - name: Build application
-        run: yarn build
-        env:
-          MONGODB_URI: ${{ secrets.MONGODB_URI }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
-          NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
+      - uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Log in to Docker Hub
+      - name: Log in to DockerHub
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_PASSWORD }}
 
-      - name: Build and push Docker image
+      - name: Build and push
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest
+          tags: |
+            ${{ env.IMAGE }}:${{ github.sha }}
+            ${{ env.IMAGE }}:${{ github.ref_name }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Install doctl
-        uses: digitalocean/action-doctl@v2
-        with:
-          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+  # ─── Job 3: Deploy with Rollback ──────────────────────────────────────────
+  deploy:
+    name: Deploy to Oracle VM
+    runs-on: ubuntu-latest
+    needs: build-push
+    if: github.ref == 'refs/heads/main'
 
-      - name: Deploy to DigitalOcean App Platform
+    steps:
+      - name: Set SSH key
         run: |
-          doctl apps create-deployment ${{ secrets.DIGITALOCEAN_APP_ID }} \
-            --wait \
-            --timeout 600
-        env:
-          DIGITALOCEAN_ACCESS_TOKEN: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > deploy.key
+          chmod 600 deploy.key
 
-      - name: Get deployment status
+      - name: Deploy with rollback
         run: |
-          doctl apps get-deployment ${{ secrets.DIGITALOCEAN_APP_ID }} \
-            $(doctl apps list-deployments ${{ secrets.DIGITALOCEAN_APP_ID }} --format ID --no-header | head -1)
-        env:
-          DIGITALOCEAN_ACCESS_TOKEN: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }} 
+          ssh -o StrictHostKeyChecking=no -i deploy.key ${{ secrets.SSH_USER }}@${{ secrets.ORACLE_VM_URL }} bash << EOF
+            set -e
+            IMAGE="${{ env.IMAGE }}"
+            NEW_TAG="${{ github.sha }}"
+            APP_NAME="officeai"
+            APP_DIR="/opt/officeai"
+
+            echo "▶ New image tag: \$NEW_TAG"
+
+            # ── Save current tag for rollback ──────────────────────────────
+            PREV_TAG=\$(docker inspect --format='{{index .Config.Image}}' \$APP_NAME 2>/dev/null \
+              | awk -F: '{print \$2}' || echo "")
+
+            if [ -z "\$PREV_TAG" ]; then
+              echo "No previous container found — fresh deploy"
+            else
+              echo "▶ Previous tag saved for rollback: \$PREV_TAG"
+            fi
+
+            # ── Pull new image ─────────────────────────────────────────────
+            echo "▶ Pulling \$IMAGE:\$NEW_TAG ..."
+            docker pull \$IMAGE:\$NEW_TAG
+
+            # ── Write tag into env file so compose picks it up ─────────────
+            sed -i "s|^IMAGE_TAG=.*|IMAGE_TAG=\$NEW_TAG|" \$APP_DIR/.env || \
+              echo "IMAGE_TAG=\$NEW_TAG" >> \$APP_DIR/.env
+
+            # ── Deploy ─────────────────────────────────────────────────────
+            cd \$APP_DIR
+            docker compose up -d --remove-orphans
+
+            # ── Health check (wait up to 30s) ──────────────────────────────
+            echo "▶ Health checking..."
+            for i in 1 2 3 4 5 6; do
+              sleep 5
+              STATUS=\$(docker inspect -f '{{.State.Running}}' \$APP_NAME 2>/dev/null || echo "false")
+              if [ "\$STATUS" = "true" ]; then
+                echo "✅ Deploy successful: \$NEW_TAG"
+                docker image prune -f --filter "label=app=\$APP_NAME" || true
+                exit 0
+              fi
+              echo "  Attempt \$i/6 — not running yet..."
+            done
+
+            # ── Rollback ───────────────────────────────────────────────────
+            echo "❌ Deploy failed. Rolling back to \$PREV_TAG..."
+
+            if [ -z "\$PREV_TAG" ]; then
+              echo "No previous image to roll back to. Manual intervention needed."
+              exit 1
+            fi
+
+            sed -i "s|^IMAGE_TAG=.*|IMAGE_TAG=\$PREV_TAG|" \$APP_DIR/.env
+            docker compose up -d --remove-orphans
+
+            echo "⏪ Rolled back to \$PREV_TAG"
+            exit 1
+          EOF
+
+      - name: Cleanup SSH key
+        if: always()
+        run: rm -f deploy.key

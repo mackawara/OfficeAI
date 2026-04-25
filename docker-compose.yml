@@ -1,0 +1,14 @@
+services:
+  app:
+    image: ${DOCKER_HUB_USERNAME}/officeai:${IMAGE_TAG}
+    container_name: officeai
+    network_mode: host
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - MONGODB_URI=${MONGODB_URI}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+      - NEXTAUTH_URL=${NEXTAUTH_URL}
+      - REDIS_HOST=127.0.0.1
+      - REDIS_HOST_PORT=6379
