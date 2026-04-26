@@ -1,9 +1,11 @@
 services:
   app:
-    image: ${DOCKER_HUB_USERNAME}/officeai:${IMAGE_TAG}
+    image: ${IMAGE}:${IMAGE_TAG}
     container_name: officeai
     network_mode: host
     restart: unless-stopped
+    env_file:
+      - .env.local
     environment:
       - NODE_ENV=production
       - MONGODB_URI=${MONGODB_URI}

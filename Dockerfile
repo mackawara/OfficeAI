@@ -20,5 +20,5 @@ COPY --from=base /code/node_modules ./node_modules
 COPY --from=base /code/.next ./.next
 COPY --from=base /code/next.config.js ./
 
-EXPOSE 6000
-CMD ["yarn", "start"]
+EXPOSE 5173
+CMD ["yarn", "start", "-p", "5173"]

@@ -72,6 +72,7 @@ jobs:
         with:
           context: .
           push: true
+          platforms: linux/arm64
           tags: |
             ${{ env.IMAGE }}:${{ github.sha }}
             ${{ env.IMAGE }}:${{ github.ref_name }}
@@ -98,7 +99,7 @@ jobs:
             IMAGE="${{ env.IMAGE }}"
             NEW_TAG="${{ github.sha }}"
             APP_NAME="officeai"
-            APP_DIR="/opt/officeai"
+            APP_DIR="/home/ubuntu/repos/officeai"
 
             echo "▶ New image tag: \$NEW_TAG"
 
@@ -117,12 +118,15 @@ jobs:
             docker pull \$IMAGE:\$NEW_TAG
 
             # ── Write tag into env file so compose picks it up ─────────────
-            sed -i "s|^IMAGE_TAG=.*|IMAGE_TAG=\$NEW_TAG|" \$APP_DIR/.env || \
-              echo "IMAGE_TAG=\$NEW_TAG" >> \$APP_DIR/.env
+            sed -i "s|^IMAGE_TAG=.*|IMAGE_TAG=\$NEW_TAG|" \$APP_DIR/.env.local || \
+              echo "IMAGE_TAG=\$NEW_TAG" >> \$APP_DIR/.env.local
+            grep -q "^IMAGE=" \$APP_DIR/.env.local && \
+              sed -i "s|^IMAGE=.*|IMAGE=\$IMAGE|" \$APP_DIR/.env.local || \
+              echo "IMAGE=\$IMAGE" >> \$APP_DIR/.env.local
 
             # ── Deploy ─────────────────────────────────────────────────────
             cd \$APP_DIR
-            docker compose up -d --remove-orphans
+            docker compose --env-file .env.local up -d --remove-orphans
 
             # ── Health check (wait up to 30s) ──────────────────────────────
             echo "▶ Health checking..."
@@ -145,8 +149,8 @@ jobs:
               exit 1
             fi
 
-            sed -i "s|^IMAGE_TAG=.*|IMAGE_TAG=\$PREV_TAG|" \$APP_DIR/.env
-            docker compose up -d --remove-orphans
+            sed -i "s|^IMAGE_TAG=.*|IMAGE_TAG=\$PREV_TAG|" \$APP_DIR/.env.local
+            docker compose --env-file .env.local up -d --remove-orphans
 
             echo "⏪ Rolled back to \$PREV_TAG"
             exit 1
